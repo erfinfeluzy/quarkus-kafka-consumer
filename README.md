@@ -14,7 +14,7 @@ Prerequsite tutorial ini adalah:
 - Pre-installed Kafka cluster on Openshift 
 
 
-## Step 1: Clone code dari GitHub saya
+## Clone code dari GitHub saya
 Download source code dari repository [GitHub](https://github.com/erfinfeluzy/quarkus-kafka-consumer.git) saya:
 ```bash
 > git clone https://github.com/erfinfeluzy/quarkus-kafka-consumer
@@ -44,11 +44,12 @@ Tambahkan library kafka client pada file pom.xml
 ### Konfigurasi Kafka Consumer
 ```properties
 # Configure the Kafka source (we read from it)
+kafka.bootstrap.servers=my-cluster-kafka-brokers:9092
 mp.messaging.incoming.mytopic-subscriber.connector=smallrye-kafka
 mp.messaging.incoming.mytopic-subscriber.topic=mytopic
 mp.messaging.incoming.mytopic-subscriber.value.deserializer=org.apache.kafka.common.serialization.StringDeserializer
 ```
-
+> Note: **my-cluster-kafka-brokers:9092** adalah alamat kafka broker dalam Openshift saya
 
 ### Consume Topic Kafka dan teruskan ke Server Send Event emitter.
 Snippet dibawah untuk subscribe ke topic **mytopic**, kemudian data dari topic diteruskan channel stream internal **my-internal-data-stream**.
@@ -116,7 +117,65 @@ window.onload = initialize;
 ```
 
 ## Voila! Kamu sudah berhasil
-Coba di browser pada url berikut [http://localhost:8080](http://localhost:8080).
+Coba di browser pada url berikut [http://$OCP_ROUTE:8080](http://$OCP_ROUTE:8080).
 
 ## Bonus! Deploy aplikasi kamu ke Red Hat Openshift
-Deploy aplikasi kamu secara native dan secure diatas [Red Hat OpenShift](https://www.openshift.com/) dan [Red Hat Secured Registry Quay.io](https://quay.io) pada tutorial saya [https://github.com/erfinfeluzy/quarkus-demo](https://github.com/erfinfeluzy/quarkus-demo).
+
+### Step 1: Build aplikasi sebagai native container
+```bash
+$ mvn clean package -Dnative -Dquarkus.native.container-build=true
+```
+Perintah ini akan generate aplikasi yang secara native run as container. setelah langkah ini cek file ** \*runner\* ** di foler target
+```bash
+$ ls -altr target/
+...
+-rw-r--r--  1 erfinfeluzy  staff      4509 Jun 15 08:15 quarkus-kafka-consumer-1.0-SNAPSHOT.jar
+drwxr-xr-x  3 erfinfeluzy  staff        96 Jun 15 08:15 generated-sources
+drwxr-xr-x  3 erfinfeluzy  staff        96 Jun 15 08:15 maven-archiver
+drwxr-xr-x  3 erfinfeluzy  staff        96 Jun 15 08:15 maven-status
+drwxr-xr-x  5 erfinfeluzy  staff       160 Jun 15 08:15 classes
+-rwxr-xr-x  1 erfinfeluzy  staff  41647448 Jun 15 08:18 quarkus-kafka-consumer-1.0-SNAPSHOT-runner
+drwxr-xr-x  4 erfinfeluzy  staff       128 Jun 15 08:18 quarkus-kafka-consumer-1.0-SNAPSHOT-native-image-source-jar
+drwxr-xr-x  9 erfinfeluzy  staff       288 Jun 15 08:27 .
+drwxr-xr-x  9 erfinfeluzy  staff       288 Jun 15 10:46 ..
+```
+
+### Step 2: Build aplikasi menjadi container
+```bash
+$ docker build -f src/main/docker/Dockerfile.native -t quarkus/kafka-consumer:v3 .
+```
+### Step 3: Deploy image ke Registry
+kali ini saya menggunakan **Quay.io** sebagai registry, karena memiliki fitur untuk security scan image kita.
+PS: saya menggunakan skopeo untuk mempermudah perpindahan registry
+```bash
+$ skopeo --insecure-policy copy --dest-creds=$CREDENTIAL docker-daemon:quarkus/kafka-consumer:v3 docker://quay.io/efeluzy/quarkus-kafka-consumer:v3
+```
+untuk credential pada Quay.io dapat di atur di konfigurasi security pada Quay.io
+
+### Step 4: Deploy image ke Openshift
+kali saya akan menggunakan Openshift CLI untuk mendeploy aplikasi. 
+> PS: developer dapat menggunakan web console untuk cara yang lebih mudah
+```bash
+$ oc new-app quay.io/efeluzy/quarkus-kafka-consumer:v3 --name quarkus-kafka-consumer 
+```
+### Bonus! Step 4 (Optional): Deploy image as Serverless apps
+```bash
+$ oc login
+$ oc project erfin-serverless-demo
+$ kn service create quarkus-kafka-consumer --image quay.io/efeluzy/quarkus-kafka-consumer:v3
+```
+result:
+```bash
+Creating service 'quarkus-kafka-consumer' in namespace 'erfin-serverless-demo':
+
+  0.693s The Route is still working to reflect the latest desired specification.
+  0.694s Configuration "quarkus-kafka-consumer" is waiting for a Revision to become ready.
+ 14.813s ...
+ 14.991s Ingress has not yet been reconciled.
+ 15.277s Ready to serve.
+
+Service 'quarkus-kafka-consumer' created to latest revision 'quarkus-kafka-consumer-gplbc-1' is available at URL:
+http://quarkus-kafka-consumer-erfin-serverless-demo.apps.erfin-cluster.sandbox1459.opentlc.com
+```
+
+
