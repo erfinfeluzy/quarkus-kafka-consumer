@@ -1,6 +1,6 @@
-# Tutorial Quarkus.io : Consume Kafka Topic and Stream as API using Server Sent Event (SSE) - Bahasa Indonesia
+# Tutorial Quarkus.io : Consume Kafka Topic and Stream as API using Server Sent Event (SSE) with Knative - Bahasa Indonesia
 
-Tutorial ini akan melakukan hands on mengenai cara stream Kafka ke HTML dengan menggunakan metode Server Send Event (SSE).
+Tutorial ini akan melakukan hands on mengenai cara stream Kafka ke HTML dengan menggunakan metode Server Send Event (SSE) dengan opsi deploy dengan menggunakan serverless knative.
 Kelebihan SSE dibandingkan dengan menggunakan Web Socket (ws://) adalah SSE menggunakan protokol http(s) dan satu arah, hanya dari server ke client saja.
 
 
@@ -12,6 +12,7 @@ Prerequsite tutorial ini adalah:
 - Dasar pemrograman Java
 - Untuk build native image diperlukan Docker runtime
 - Pre-installed Kafka cluster on Openshift 
+- Optional: knative cli, RedHat Openshift Serverless Operator
 
 
 ## Clone code dari GitHub saya
@@ -178,4 +179,7 @@ Service 'quarkus-kafka-consumer' created to latest revision 'quarkus-kafka-consu
 http://quarkus-kafka-consumer-erfin-serverless-demo.apps.erfin-cluster.sandbox1459.opentlc.com
 ```
 
-
+Cek Serverless service menggunakan knative cli
+```bash
+$ kn service list
+```
